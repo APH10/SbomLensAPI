@@ -1,28 +1,38 @@
 import argparse, json, os, logging
-from dotenv import load_dotenv
 from apiclient import APIClient
 
 def make_client(args):
-    load_dotenv()
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except Exception:
+        pass
     base_url = args.base_url or os.getenv('API_BASE_URL')
     api_key = args.api_key or os.getenv('API_KEY')
     return APIClient(base_url=base_url, api_key=api_key, debug=args.debug)
 
+def _format_response(response, output_file):
+    logging.debug(f"Response code: {response.get('status_code')}")
+    if response.get("data") is not None:
+        if output_file is None:
+            print(json.dumps(response.get("data"), indent=2))
+        else:
+            with open(str(output_file), "w", encoding="utf-8") as f:
+                f.write(str(response.get("data")).replace("'",'"'))
+
 def cmd_status(args):
     client = make_client(args)
-    print(json.dumps(client.check_status(), indent=2))
+    #print(json.dumps(client.check_status(), indent=2))
+    _format_response(client.check_status(), args.output)
 
 def cmd_auth(args):
     client = make_client(args)
     token = client.authenticate(args.username, args.password)
-    print(json.dumps({'token':token}, indent=2))
+    _format_response({'token':token}, args.output)
 
 def cmd_get(args):
     client = make_client(args)
-    print(json.dumps(client.api_get(args.endpoint), indent=2))
-
-    # payload = json.loads(args.data) if args.data else {}
-    # print(json.dumps(client.api_get(args.endpoint, payload), indent=2))
+    _format_response(client.api_get(args.endpoint), args.output)
 
 def cmd_post(args):
     client = make_client(args)
@@ -33,9 +43,10 @@ def cmd_post(args):
             fields[k]=v
         file_field, path = args.file.split('=',1)
         print(json.dumps(client.api_post_file(args.endpoint, fields, file_field, path), indent=2))
+        _format_response(client.api_post_file(args.endpoint, fields, file_field, path), args.output)
     else:
         payload = json.loads(args.data) if args.data else {}
-        print(json.dumps(client.api_post(args.endpoint, payload), indent=2))
+        _format_response(client.api_post(args.endpoint, payload), args.output)
 
 def cmd_reset(args):
     client = make_client(args)
@@ -47,6 +58,7 @@ def main():
     p.add_argument('--base-url')
     p.add_argument('--api-key')
     p.add_argument('--debug', action='store_true')
+    p.add_argument('--output')
 
     sub=p.add_subparsers(dest='cmd', required=True)
 
@@ -75,7 +87,11 @@ def main():
 
     args=p.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO)
-    args.func(args)
+    try:
+        args.func(args)
+    except Exception as e:
+        logging.info(f"{e}")
+        print ("[ERROR] Unable to perform request")
 
 if __name__=='__main__':
     main()
