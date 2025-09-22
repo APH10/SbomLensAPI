@@ -1,28 +1,45 @@
-import json, os, logging, requests
+# Copyright (C) 2025 APH10
+# SPDX-License-Identifier: Apache-2.0
+
+import json
+import logging
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import requests
+
 logger = logging.getLogger(__name__)
+
 
 class APIClient:
 
-    DEFAULT_URL = "http://127.0.0.1:5000/api/v1"
+    DEFAULT_URL = "http://127.0.0.1"
     DEFAULT_TOKEN_AGE = 30
+    API_PATH = ":5000/api/v1"
 
     def __init__(self, base_url=None, api_key=None, token_file=None, debug=False):
         try:
             from dotenv import load_dotenv
+
             load_dotenv()
         except Exception:
             pass
-        self.base_url = (base_url or os.getenv('SBOMLENS_API_BASE_URL',self.DEFAULT_URL)).rstrip('/')
-        self.api_key = api_key or os.getenv('SBOMLENS_API_KEY')
+        self.base_url = (
+            base_url or os.getenv("SBOMLENS_API_BASE_URL", self.DEFAULT_URL)
+        ).rstrip("/")
+        self.base_url = f"{self.base_url}{self.API_PATH}"
+        self.api_key = api_key or os.getenv("SBOMLENS_API_KEY")
         if not self.api_key:
-            raise ValueError('API key is required')
+            raise ValueError("API key is required")
         self.session = requests.Session()
-        self.session.headers.update({'X-API-Key': self.api_key})
-        self.token_file = Path(token_file) if token_file else Path.home() / ".sbomlens_token"
-        self.token_max_age_days = int(os.getenv("SBOMLENS_TOKEN_MAX_AGE_DAYS", self.DEFAULT_TOKEN_AGE))
+        self.session.headers.update({"X-API-Key": self.api_key})
+        self.token_file = (
+            Path(token_file) if token_file else Path.home() / ".sbomlens_token"
+        )
+        self.token_max_age_days = int(
+            os.getenv("SBOMLENS_TOKEN_MAX_AGE_DAYS", self.DEFAULT_TOKEN_AGE)
+        )
         logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
         self.token, self.refresh_token = self._load_token()
 
@@ -31,8 +48,10 @@ class APIClient:
     def _load_token(self):
         if not self.token_file.exists():
             return None, None
-        if datetime.now() - datetime.fromtimestamp(self.token_file.stat().st_mtime) > timedelta(days=self.token_max_age_days):
-            logger.info("Stored token expired, re-authentication required")
+        if datetime.now() - datetime.fromtimestamp(
+            self.token_file.stat().st_mtime
+        ) > timedelta(days=self.token_max_age_days):
+            logger.debug("Stored token expired, re-authentication required")
             return None, None
         try:
             data = json.loads(self.token_file.read_text())
@@ -64,15 +83,24 @@ class APIClient:
             return {"success": True, "status_code": response.status_code, "data": data}
         else:
             logger.error(f"API error {response.status_code}: {data}")
-            return {"success": False, "status_code": response.status_code, "error": data}
+            return {
+                "success": False,
+                "status_code": response.status_code,
+                "error": data,
+            }
 
     def _refresh_access_token(self):
         """Attempt to refresh the access token using refresh token."""
         if not self.refresh_token:
             return False
         url = f"{self.base_url}/refresh"
-        headers = {"Authorization": f"Bearer {self.refresh_token}", "x-api-key": self.api_key}
-        resp = self.session.post(url, json={"refresh_token": self.refresh_token}, headers=headers)
+        headers = {
+            "Authorization": f"Bearer {self.refresh_token}",
+            "x-api-key": self.api_key,
+        }
+        resp = self.session.post(
+            url, json={"refresh_token": self.refresh_token}, headers=headers
+        )
         result = self._handle_response(resp)
         if result["success"] and "access_token" in result["data"]:
             logger.debug("Access token refreshed")
@@ -93,14 +121,13 @@ class APIClient:
                 response = self.session.request(method, url, headers=headers, **kwargs)
         return self._handle_response(response)
 
-
     # PUBLIC API
 
     def reset_auth(self):
         if os.path.exists(self.token_file):
             os.remove(self.token_file)
         self.token, self.refresh_token = None, None
-        logger.info("Tokens reset")
+        logger.debug("Tokens reset")
 
     def check_status(self):
         url = f"{self.base_url}/status"
@@ -110,7 +137,9 @@ class APIClient:
     def authenticate(self, username, password):
         url = f"{self.base_url}/auth"
         payload = {"username": username, "password": password}
-        response = self.session.post(url, json=payload, headers=self._headers(include_auth=False))
+        response = self.session.post(
+            url, json=payload, headers=self._headers(include_auth=False)
+        )
         result = self._handle_response(response)
         if result["success"]:
             tokens = result["data"]
