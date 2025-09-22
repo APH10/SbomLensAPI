@@ -38,9 +38,11 @@ Copy .env.example and edit as needed:
 cp .env.example .env
 ```
 
+```bash
 SBOMLENS_API_KEY – required
 SBOMLENS_API_BASE_URL – default: http://127.0.0.1
 SBOMLENS_TOKEN_MAX_AGE_DAYS – default: 30
+```
 
 ## Usage
 
