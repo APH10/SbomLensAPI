@@ -5,6 +5,7 @@ VALID_API_KEY = "TESTKEY"
 VALID_USER = "user"
 VALID_PASS = "pass"
 VALID_TOKEN = "dummytoken"
+REFRESH_TOKEN = "keepgoing"
 
 
 @app.before_request
@@ -23,12 +24,13 @@ def status():
 def auth():
     data = request.get_json(silent=True) or {}
     if data.get("username") == VALID_USER and data.get("password") == VALID_PASS:
-        return jsonify({"token": VALID_TOKEN})
+        return jsonify({"access_token": VALID_TOKEN, "refresh_token": REFRESH_TOKEN})
     return jsonify({"error": "Invalid credentials"}), 401
 
 
 @app.route("/api/v1/end1")
 def end1():
+    print (request.headers)
     if request.headers.get("Authorization") != f"Bearer {VALID_TOKEN}":
         return jsonify({"error": "Unauthorized"}), 403
     return jsonify({"data": "hello"})
