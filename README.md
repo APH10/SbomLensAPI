@@ -97,9 +97,9 @@ If the platform is not available or accessible, an error will be returned.
 
 ### Authentication
 
-Before any interaction with the SBOMLens platform, a valid user needs to authenticate with the platform. If a user is already authenticated with the platform, this request to autenticate 
+Before any interaction with the SBOMLens platform, a valid user needs to authenticate with the platform. If a user is already authenticated with the platform, this request to authenticate will replace the currently authenictaed user.
 
-Once authenticated, a token is stored on the system for a period of up to 30 days (the )
+Once authenticated, a token is stored on the system for a period of up to 30 days (the default).
 
 ```bash
 sbomlenscli auth username password
@@ -107,7 +107,7 @@ sbomlenscli auth username password
 
 If the username and password are valid, the client will be logged in.
 
-If the username and/or password are not valid, the foloowing error will be returned
+If the username and/or password are not valid, the following error will be returned
 
 ```bash
 ERROR:apiclient.client:API error 401: {'message': 'Bad username or password'}
